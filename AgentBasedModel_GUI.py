@@ -7,6 +7,7 @@ from mesa.visualization.modules import CanvasGrid
 from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.UserParam import UserSettableParameter
 
+
 class Robot(Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
@@ -28,10 +29,12 @@ class Robot(Agent):
 
 
 class RobotModel(Model):
-    def __init__(self, width, height, num_agents):
+    def __init__(self, width, height, num_agents, num_steps):
         self.num_agents = num_agents
+        self.num_steps = num_steps  # Store the chosen number of steps
         self.grid = MultiGrid(width, height, False)
         self.schedule = RandomActivation(self)
+        self.running = False  # Keeps the simulation running
 
         for i in range(self.num_agents):
             a = Robot(i, self)
@@ -43,24 +46,23 @@ class RobotModel(Model):
         self.datacollector = DataCollector(agent_reporters={"X": "x", "Y": "y"})
 
     def step(self):
-        """Advance the model by one step."""
-        self.datacollector.collect(self)
-        self.schedule.step()
+        """Advance the model by one step and stop after num_steps."""
+        if self.schedule.steps < self.num_steps:
+            self.datacollector.collect(self)
+            self.schedule.step()
+        else:
+            self.running = False  # Stop the simulation after num_steps
 
 
 def agent_portrayal(agent):
-    """
-    Define how agents will be drawn on the grid.
-    Here, robots will be displayed as red circles.
-    """
-    portrayal = {
+    """Define how agents will be drawn on the grid."""
+    return {
         "Shape": "circle",
         "Color": "red",
         "Filled": "true",
         "Layer": 1,
         "r": 0.5,  # radius of the circle
     }
-    return portrayal
 
 
 # Create a CanvasGrid for visualization
@@ -71,9 +73,10 @@ model_params = {
     "width": 20,
     "height": 20,
     "num_agents": UserSettableParameter("slider", "Number of Robots", 5, 1, 20, 1),
+    "num_steps": UserSettableParameter("slider", "Number of Steps", 10, 1, 100, 1),
 }
 
 # Create and launch the server for visualization
 server = ModularServer(RobotModel, [grid], "Robot Model", model_params)
-server.port = 8521  # Default Mesa port
+server.port = 8523  # Default Mesa port
 server.launch()
