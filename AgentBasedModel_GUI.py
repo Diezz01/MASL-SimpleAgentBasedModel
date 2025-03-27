@@ -1,11 +1,10 @@
-import random
 from mesa import Agent, Model
-from mesa.time import RandomActivation
-from mesa.space import MultiGrid
 from mesa.datacollection import DataCollector
-from mesa.visualization.modules import CanvasGrid
+from mesa.space import MultiGrid
+from mesa.time import RandomActivation
 from mesa.visualization.ModularVisualization import ModularServer
 from mesa.visualization.UserParam import UserSettableParameter
+from mesa.visualization.modules import CanvasGrid
 
 
 class Robot(Agent):
@@ -16,9 +15,7 @@ class Robot(Agent):
 
     def move(self):
         """Move the agent randomly."""
-        possible_steps = self.model.grid.get_neighborhood(
-            (self.x, self.y), moore=True, include_center=False
-        )
+        possible_steps = self.model.grid.get_neighborhood((self.x, self.y), moore=True, include_center=False)
         new_position = self.random.choice(possible_steps)
         self.model.grid.move_agent(self, new_position)
         self.x, self.y = new_position
@@ -56,12 +53,7 @@ class RobotModel(Model):
 
 def agent_portrayal(agent):
     """Define how agents will be drawn on the grid."""
-    return {
-        "Shape": "circle",
-        "Color": "red",
-        "Filled": "true",
-        "Layer": 1,
-        "r": 0.5,  # radius of the circle
+    return {"Shape": "circle", "Color": "red", "Filled": "true", "Layer": 1, "r": 0.5,  # radius of the circle
     }
 
 
@@ -69,12 +61,9 @@ def agent_portrayal(agent):
 grid = CanvasGrid(agent_portrayal, 20, 20, 500, 500)
 
 # Add sliders to set parameters interactively
-model_params = {
-    "width": 20,
-    "height": 20,
+model_params = {"width": 20, "height": 20,
     "num_agents": UserSettableParameter("slider", "Number of Robots", 5, 1, 20, 1),
-    "num_steps": UserSettableParameter("slider", "Number of Steps", 10, 1, 100, 1),
-}
+    "num_steps": UserSettableParameter("slider", "Number of Steps", 10, 1, 100, 1), }
 
 # Create and launch the server for visualization
 server = ModularServer(RobotModel, [grid], "Robot Model", model_params)
