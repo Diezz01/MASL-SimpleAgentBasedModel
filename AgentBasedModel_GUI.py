@@ -1,71 +1,55 @@
 from mesa import Agent, Model
-from mesa.datacollection import DataCollector
-from mesa.space import MultiGrid
 from mesa.time import RandomActivation
-from mesa.visualization.ModularVisualization import ModularServer
-from mesa.visualization.UserParam import UserSettableParameter
+from mesa.space import MultiGrid
 from mesa.visualization.modules import CanvasGrid
+from mesa.visualization.UserParam import UserSettableParameter
+from mesa.visualization.ModularVisualization import ModularServer
 
-
-class Robot(Agent):
+class RandomWalker(Agent):
     def __init__(self, unique_id, model):
         super().__init__(unique_id, model)
-        self.x = self.random.randrange(self.model.grid.width)
-        self.y = self.random.randrange(self.model.grid.height)
-
-    def move(self):
-        """Move the agent randomly."""
-        possible_steps = self.model.grid.get_neighborhood((self.x, self.y), moore=True, include_center=False)
-        new_position = self.random.choice(possible_steps)
-        self.model.grid.move_agent(self, new_position)
-        self.x, self.y = new_position
 
     def step(self):
-        """Move the agent during each step."""
-        self.move()
+        possible_moves = self.model.grid.get_neighborhood(
+            self.pos, moore=True, include_center=False
+        )
+        new_position = self.random.choice(possible_moves)
+        self.model.grid.move_agent(self, new_position)
 
-
-class RobotModel(Model):
-    def __init__(self, width, height, num_agents, num_steps):
-        self.num_agents = num_agents
-        self.num_steps = num_steps  # Store the chosen number of steps
-        self.grid = MultiGrid(width, height, False)
+class RandomModel(Model):
+    def __init__(self, N, width, height, max_steps=10):
+        self.num_agents = N
+        self.grid = MultiGrid(width, height, torus=True)
         self.schedule = RandomActivation(self)
-        self.running = False  # Keeps the simulation running
+        self.running = True  # Flag to indicate if the model is running
+        self.step_count = 0  # Counter for steps
+        self.max_steps = max_steps  # Maximum number of steps
 
         for i in range(self.num_agents):
-            a = Robot(i, self)
-            self.schedule.add(a)
             x = self.random.randrange(self.grid.width)
             y = self.random.randrange(self.grid.height)
-            self.grid.place_agent(a, (x, y))
-
-        self.datacollector = DataCollector(agent_reporters={"X": "x", "Y": "y"})
+            agent = RandomWalker(i, self)
+            self.grid.place_agent(agent, (x, y))
+            self.schedule.add(agent)
 
     def step(self):
-        """Advance the model by one step and stop after num_steps."""
-        if self.schedule.steps < self.num_steps:
-            self.datacollector.collect(self)
-            self.schedule.step()
-        else:
-            self.running = False  # Stop the simulation after num_steps
-
+        self.schedule.step()
+        self.step_count += 1
+        if self.step_count >= self.max_steps:
+            self.running = False  # Stop the model
 
 def agent_portrayal(agent):
-    """Define how agents will be drawn on the grid."""
-    return {"Shape": "circle", "Color": "red", "Filled": "true", "Layer": 1, "r": 0.5,  # radius of the circle
-    }
-
-
-# Create a CanvasGrid for visualization
-grid = CanvasGrid(agent_portrayal, 20, 20, 500, 500)
+    return {"Shape": "circle", "Color": "red", "Filled": "true", "Layer": 0, "r": 0.5}
 
 # Add sliders to set parameters interactively
-model_params = {"width": 20, "height": 20,
-    "num_agents": UserSettableParameter("slider", "Number of Robots", 5, 1, 20, 1),
-    "num_steps": UserSettableParameter("slider", "Number of Steps", 10, 1, 100, 1), }
+model_params = {
+    "N": UserSettableParameter("slider", "Number of Robots", 5, 1, 20, 1),
+    "width": 20, "height": 20,
+    "max_steps": UserSettableParameter("slider", "Number of Steps", 10, 1, 100, 1), }
 
-# Create and launch the server for visualization
-server = ModularServer(RobotModel, [grid], "Robot Model", model_params)
-server.port = 8523  # Default Mesa port
-server.launch()
+grid = CanvasGrid(agent_portrayal, 20, 20, 500, 500)
+#server = ModularServer(RandomModel, [grid], "Robot Model", {"N": 10, "width": 10, "height": 10})
+server = ModularServer(RandomModel, [grid], "Robot Model", model_params)
+
+if __name__ == "__main__":
+    server.launch()
